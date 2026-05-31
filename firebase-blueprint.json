@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with experience points, current level, and achievements.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier matching request.auth.uid" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User profile display name" },
+        "photoURL": { "type": "string", "description": "User profile photo URL" },
+        "xp": { "type": "integer", "description": "Total experience points earned" },
+        "level": { "type": "integer", "description": "Current user level" },
+        "achievements": { "type": "array", "description": "Unlocked status achievement badge keys" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of last modification" }
+      },
+      "required": ["uid", "email", "displayName", "xp", "level", "createdAt", "updatedAt"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "Individual habit to track with category, frequency, streaks, and completed date records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the habit" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "description": "Name of the habit" },
+        "description": { "type": "string", "description": "Optional habit context details" },
+        "category": { "type": "string", "enum": ["health", "fitness", "mind", "work", "creative", "social"], "description": "Category group" },
+        "icon": { "type": "string", "description": "Lucide icon string keyword identifier" },
+        "streak": { "type": "integer", "description": "Current daily streak count" },
+        "longestStreak": { "type": "integer", "description": "All time longest streak achieved" },
+        "completedDates": { "type": "array", "description": "List of string dates in YYYY-MM-DD format on which habit was cleared" },
+        "notes": { "type": "array", "description": "Dynamic array of notes mapped for check-in descriptions" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "category", "icon", "streak", "longestStreak", "completedDates", "createdAt", "updatedAt"]
+    },
+    "FocusSession": {
+      "title": "Focus Session",
+      "description": "Log of focus work timers completed by the user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "duration": { "type": "integer", "description": "Session duration completed in minutes" },
+        "category": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "duration", "category", "completedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user document structures containing profile, XP, and badges metadata."
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": "Habit",
+      "description": "User nested subcollection for all personal habits."
+    },
+    "/users/{userId}/focusSessions/{sessionId}": {
+      "schema": "FocusSession",
+      "description": "User nested subcollection storing completed focus timer logs."
+    }
+  }
+}

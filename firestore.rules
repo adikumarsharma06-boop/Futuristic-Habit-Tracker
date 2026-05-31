@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny Catch-All Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY SCHEMA VALIDATIONS ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'photoURL', 'xp', 'level', 'achievements', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 9
+        && data.uid is string && data.uid.size() <= 128
+        && data.email is string && data.email.size() <= 256
+        && data.displayName is string && data.displayName.size() <= 128
+        && data.photoURL is string && data.photoURL.size() <= 1024
+        && data.xp is int && data.xp >= 0 && data.xp < 100000000
+        && data.level is int && data.level >= 1 && data.level <= 100
+        && data.achievements is list && data.achievements.size() <= 50
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHabit(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'description', 'category', 'icon', 'streak', 'longestStreak', 'completedDates', 'notes', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 11
+        && data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.description is string && data.description.size() <= 1000
+        && data.category is string && data.category in ['health', 'fitness', 'mind', 'work', 'creative', 'social']
+        && data.icon is string && data.icon.size() <= 64
+        && data.streak is int && data.streak >= 0
+        && data.longestStreak is int && data.longestStreak >= 0
+        && data.completedDates is list && data.completedDates.size() <= 1000
+        && data.notes is list && data.notes.size() <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFocusSession(data) {
+      return data.keys().hasAll(['id', 'userId', 'duration', 'category', 'completedAt'])
+        && data.keys().size() == 5
+        && data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.duration is int && data.duration > 0 && data.duration <= 480
+        && data.category is string && data.category.size() <= 64
+        && data.completedAt is timestamp;
+    }
+
+    // --- ROUTE MATCHERS ---
+
+    // User profile documents
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isOwner(userId) && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Embedded habit docs
+      match /habits/{habitId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(habitId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(habitId)
+          && isValidHabit(incoming())
+          && incoming().userId == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(habitId)
+          && isValidHabit(incoming())
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(habitId);
+      }
+
+      // Embedded focus sessions docs
+      match /focusSessions/{sessionId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(sessionId)
+          && isValidFocusSession(incoming())
+          && incoming().userId == request.auth.uid
+          && incoming().completedAt == request.time;
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(sessionId)
+          && isValidFocusSession(incoming())
+          && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+      }
+    }
+  }
+}

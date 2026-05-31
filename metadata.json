@@ -1,0 +1,6 @@
+{
+  "name": "Futuristic Habit Tracker",
+  "description": "A premium modern Habit Tracker with a futuristic dark UI, smart AI quotes, gamified levels, interactive focus timer and advanced progress analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
