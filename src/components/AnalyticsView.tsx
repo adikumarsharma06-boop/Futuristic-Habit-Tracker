@@ -369,7 +369,7 @@ export default function AnalyticsView() {
               variants={heatmapContainerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-10 gap-2 p-1 bg-[#090A11]/60 border border-[#16192C]/50 rounded-xl max-w-lg mx-auto md:mx-0"
+              className="grid grid-cols-10 gap-1.5 sm:gap-2 p-1 bg-[#090A11]/60 border border-[#16192C]/50 rounded-xl max-w-lg mx-auto md:mx-0"
             >
               {last30Days.map((dateStr) => {
                 const completionsForDay = habits.filter(h => h.completedDates?.includes(dateStr)).length;
@@ -380,7 +380,7 @@ export default function AnalyticsView() {
                     variants={heatmapCellVariants}
                     title={`${dateLabel}: ${completionsForDay} check-ins`}
                     whileHover={{ scale: 1.15 }}
-                    className={`aspect-square rounded-md border flex items-center justify-center text-[10px] font-mono font-bold cursor-help transition-all transform ${getHeatmapColor(completionsForDay)}`}
+                    className={`aspect-square rounded-md border flex items-center justify-center text-[8px] sm:text-[10px] font-mono font-bold cursor-help transition-all transform ${getHeatmapColor(completionsForDay)}`}
                   >
                     {new Date(dateStr).getDate()}
                   </motion.div>

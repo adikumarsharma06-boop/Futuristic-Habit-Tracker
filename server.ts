@@ -96,12 +96,14 @@ async function startServer() {
         });
         rawText = response.text || "";
       } catch (primaryErr: any) {
-        // Check if error is due to rate limits or quota (429) to avoid noisy warning traces
-        const isQuotaError = primaryErr?.status === 429 || String(primaryErr).includes("quota") || String(primaryErr).includes("429");
-        if (isQuotaError) {
-          console.info("[Info] Gemini primary model (gemini-3.5-flash) is rate-limited. Trying fallback model...");
+        // Check if error is due to high demand, rate limits, or transient unavailability (e.g. 503, 429) to print clean cyber status logs
+        const isTransientOrQuota = primaryErr?.status === 429 || primaryErr?.status === 503 ||
+          String(primaryErr).includes("quota") || String(primaryErr).includes("429") || String(primaryErr).includes("503") || String(primaryErr).includes("demand");
+
+        if (isTransientOrQuota) {
+          console.info(`[Info] Gemini primary (gemini-3.5-flash) busy/unsupported. Fallback calibration active...`);
         } else {
-          console.warn("[Warning] Primary model failed, trying fallback model:", primaryErr.message || primaryErr);
+          console.warn("[Warning] Primary model failed, calibrating fallback model...", primaryErr.message || primaryErr);
         }
         
         // Attempt fallback model: gemini-flash-latest
@@ -143,9 +145,11 @@ async function startServer() {
 
       res.json(jsonRes);
     } catch (error: any) {
-      const isQuotaError = error?.status === 429 || String(error).includes("quota") || String(error).includes("429");
-      if (isQuotaError) {
-        console.info("[Info] Gemini quota exhausted or API rate-limited. Serving cached quote or fallback.");
+      const isTransientOrQuota = error?.status === 429 || error?.status === 503 ||
+        String(error).includes("quota") || String(error).includes("429") || String(error).includes("503") || String(error).includes("demand") || String(error).includes("UNAVAILABLE");
+
+      if (isTransientOrQuota) {
+        console.info("[Info] Gemini busy, rate-limited or unavailable. Serving cached quote or fallback.");
       } else {
         console.warn("[Warning] Gemini quote loader experienced failure:", error.message || error);
       }

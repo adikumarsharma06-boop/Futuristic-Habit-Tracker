@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Habit, HabitCategory } from '../types';
 import { useApp } from '../context/AppContext';
 import LucideIcon from './LucideIcon';
-import { Check, Flame, Award, Calendar, ChevronDown, ChevronUp, Trash2, Edit, Edit3, MessageSquarePlus, Clock } from 'lucide-react';
+import { Check, Flame, Award, Calendar, ChevronDown, ChevronUp, Trash2, Edit, Edit3, MessageSquarePlus, Clock, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HabitCardProps {
@@ -57,7 +57,7 @@ const CATEGORY_STYLES: Record<HabitCategory, { bg: string, text: string, border:
 };
 
 export default function HabitCard({ habit, onEdit, onDelete }: HabitCardProps) {
-  const { toggleHabitCheck, deleteHabit, editHabit } = useApp();
+  const { toggleHabitCheck, deleteHabit, editHabit, habits } = useApp();
   const [expanded, setExpanded] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
@@ -420,6 +420,51 @@ export default function HabitCard({ habit, onEdit, onDelete }: HabitCardProps) {
             />
           )}
         </motion.button>
+      </div>
+
+      {/* Daily Goal Progress Indicator */}
+      <div className="bg-[#121425]/40 border border-[#23284B]/35 rounded-xl p-3.5 space-y-2 mt-1 shadow-inner relative overflow-hidden" id={`daily-goal-${habit.id}`}>
+        {/* Subtle accent back glow */}
+        <div className={`absolute -right-10 -bottom-10 w-24 h-24 rounded-full blur-[40px] opacity-15 pointer-events-none transition ${isCompletedToday ? style.bg : 'bg-transparent'}`} />
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className={`w-3.5 h-3.5 transition-all duration-300 ${isCompletedToday ? `${style.text} drop-shadow-[0_0_5.5px_rgba(0,240,255,0.5)]` : 'text-[#4E5472]'}`} />
+            <span className="text-[10px] font-mono tracking-widest text-[#8C93B2] uppercase font-bold">
+              Daily Goal Progress
+            </span>
+          </div>
+          <span className={`text-[10px] font-mono font-bold transition-all duration-300 ${isCompletedToday ? style.text : 'text-[#6F7694]'}`}>
+            {isCompletedToday ? '100% (Complete)' : '0% (Pending)'}
+          </span>
+        </div>
+
+        {/* Outer bar */}
+        <div className="relative w-full h-2 bg-[#090A14] rounded-full overflow-hidden border border-[#23284B]/60">
+          {/* Animated gradient fill for the daily indicator */}
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: isCompletedToday ? '100%' : '0%' }}
+            transition={{ type: "spring", stiffness: 100, damping: 15 }}
+            className={`h-full rounded-full transition-all duration-300 ${
+              isCompletedToday
+                ? `bg-gradient-to-r from-cyan-500 via-[#00F0FF] to-violet-500 shadow-[0_0_8px_rgba(0,240,255,0.4)]`
+                : 'bg-transparent'
+            }`}
+          />
+        </div>
+        
+        {/* Overall daily habits routine progress */}
+        {habits && habits.length > 0 && (
+          <div className="flex items-center justify-between text-[8px] font-mono text-[#545B83] uppercase">
+            <span>Overall Daily Routine</span>
+            <span className="font-semibold text-[#8C93B2]">
+              {habits.filter(h => h.completedDates?.includes(todayStr)).length} of {habits.length} done ({
+                Math.round((habits.filter(h => h.completedDates?.includes(todayStr)).length / habits.length) * 100)
+              }%)
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Streak indicators */}

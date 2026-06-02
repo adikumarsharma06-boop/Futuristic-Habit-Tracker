@@ -143,9 +143,9 @@ export default function AddEditHabitModal({ isOpen, onClose, habitToEdit }: AddE
   };
 
   return (
-    <div className="fixed inset-0 bg-[#04060C]/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-[#04060C]/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div 
-        className="relative max-w-lg w-full bg-[#0B0D18] border border-cyan-500/20 rounded-3xl p-6 shadow-[0_0_30px_rgba(0,240,255,0.1)] overflow-hidden"
+        className="relative max-w-lg w-full bg-[#0B0D18] border border-cyan-500/20 rounded-3xl p-5 md:p-6 shadow-[0_0_30px_rgba(0,240,255,0.1)] my-auto max-h-[92vh] overflow-y-auto custom-scrollbar"
         id="add-edit-habit-modal"
       >
         {/* Glow visual line */}
@@ -233,7 +233,7 @@ export default function AddEditHabitModal({ isOpen, onClose, habitToEdit }: AddE
                 Sync / Toggle Colors & Icons
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
               {Object.entries(CATEGORY_DETAILS).map(([catId, catDetails]) => {
                 const isSelectedCat = category === catId;
                 const isSelectedIcon = selectedIcon === catDetails.defaultIcon;
@@ -356,7 +356,7 @@ export default function AddEditHabitModal({ isOpen, onClose, habitToEdit }: AddE
               <LayoutGrid className="w-3.5 h-3.5" />
               SELECT CORE AVATAR/ICON
             </label>
-            <div className="grid grid-cols-6 gap-2 p-2 bg-[#0F1122] border border-[#23284B] rounded-2xl max-h-[140px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 p-1.5 bg-[#0F1122] border border-[#23284B] rounded-2xl max-h-[140px] overflow-y-auto pr-1">
               {AVAILABLE_HABIT_ICONS.map((ico) => {
                 const isActive = selectedIcon === ico.name;
                 return (

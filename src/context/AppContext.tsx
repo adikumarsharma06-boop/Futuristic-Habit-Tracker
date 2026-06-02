@@ -262,10 +262,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loginAsGuest = async () => {
     setLoading(true);
     try {
+      const savedEmail = localStorage.getItem('google_sync_email') || 'sandbox@example.com';
+      const savedName = localStorage.getItem('google_sync_name') || 'Futuristic Explorer';
       const mockProfile: UserProfile = {
         uid: 'sandbox-user-id',
-        email: 'sandbox@example.com',
-        displayName: 'Futuristic Explorer',
+        email: savedEmail,
+        displayName: savedName,
         photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
         xp: 150,
         level: 1,

@@ -27,7 +27,13 @@ import {
   Mail,
   RefreshCw,
   Bell,
-  Clock
+  Clock,
+  Database,
+  Cpu,
+  Globe,
+  Check,
+  X,
+  Key
 } from 'lucide-react';
 import { BADGES_LIST } from '../lib/badges';
 import { SynapseLogo } from './AuthGate';
@@ -57,6 +63,31 @@ export default function ProfileView() {
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
     return localStorage.getItem('last_google_sync_time') || 'Never Synced';
   });
+
+  // States for Google Account Sync Setup Modal Form
+  const [showGoogleSyncModal, setShowGoogleSyncModal] = useState(false);
+  const [googleEmailInput, setGoogleEmailInput] = useState(() => {
+    return localStorage.getItem('google_sync_email') || userProfile?.email || '';
+  });
+  const [googleNameInput, setGoogleNameInput] = useState(() => {
+    return localStorage.getItem('google_sync_name') || userProfile?.displayName || '';
+  });
+  const [googlePasswordInput, setGooglePasswordInput] = useState('');
+  const [googleLockPassword, setGoogleLockPassword] = useState(() => {
+    return localStorage.getItem('google_sync_lock_password') || '';
+  });
+  const [googleBackupCadence, setGoogleBackupCadence] = useState(() => {
+    return localStorage.getItem('google_sync_cadence') || 'hourly';
+  });
+  const [googleSyncOptions, setGoogleSyncOptions] = useState(() => {
+    try {
+      const opts = localStorage.getItem('google_sync_options');
+      return opts ? JSON.parse(opts) : { habits: true, focus: true, badges: true };
+    } catch {
+      return { habits: true, focus: true, badges: true };
+    }
+  });
+  const [googleSyncStatusMsg, setGoogleSyncStatusMsg] = useState<string | null>(null);
 
   // States for Daily Habit Reminder coordination
   const [reminderEnabled, setReminderEnabled] = useState(() => {
@@ -255,6 +286,55 @@ export default function ProfileView() {
     }
   };
 
+  const handleGoogleSyncSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleEmailInput.trim()) {
+      setGoogleSyncStatusMsg("ERROR: Google account email address must match active coordinates.");
+      return;
+    }
+    if (!googleNameInput.trim()) {
+      setGoogleSyncStatusMsg("ERROR: Google account name matches are mandatory.");
+      return;
+    }
+    if (!googlePasswordInput) {
+      setGoogleSyncStatusMsg("ERROR: Account security credential shield-key is mandatory.");
+      return;
+    }
+
+    setSyncing(true);
+    setGoogleSyncStatusMsg("ESTABLISHING SYNAPSE INTERFACE SECURE UPLINK...");
+    
+    try {
+      // Connect / re-verify through Google login
+      await loginUser();
+
+      const nowStr = new Date().toLocaleString();
+      localStorage.setItem('last_google_sync_time', nowStr);
+      setLastSyncTime(nowStr);
+
+      // Save additional preferences to localStorage
+      localStorage.setItem('google_sync_email', googleEmailInput.trim());
+      localStorage.setItem('google_sync_name', googleNameInput.trim());
+      localStorage.setItem('google_sync_lock_password', googleLockPassword.trim());
+      localStorage.setItem('google_sync_cadence', googleBackupCadence);
+      localStorage.setItem('google_sync_options', JSON.stringify(googleSyncOptions));
+
+      // Trigger custom event so any active listeners like App.tsx update instantly
+      window.dispatchEvent(new Event('google_sync_credentials_updated'));
+
+      setSyncSuccessMsg(`GOOGLE DATABASE SYNC COMPLETE: Efficient high-fidelity sync established with Google Account name [${googleNameInput.trim()}] and email (${googleEmailInput.trim()}). Sync Cadence configured to [${googleBackupCadence.toUpperCase()}]. Active syncing categories: ${Object.entries(googleSyncOptions).filter(([_, v]) => v).map(([k]) => k.toUpperCase()).join(', ')}.`);
+      
+      setGoogleSyncStatusMsg(null);
+      setShowGoogleSyncModal(false);
+      setTimeout(() => setSyncSuccessMsg(null), 8000);
+    } catch (err: any) {
+      console.error(err);
+      setGoogleSyncStatusMsg(`SYNC GATEWAY FAULT: ${err.message || "Failed to finalize sync coordinates."}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Helper values for password strength visualization
   const getStrengthMeta = () => {
     switch (strengthScore) {
@@ -441,7 +521,7 @@ export default function ProfileView() {
           <motion.div 
             whileHover={{ scale: 1.01 }}
             className="p-5 md:p-6 bg-[#0E1325] border border-[#222E5C] rounded-3xl relative overflow-hidden group/gcard cursor-pointer select-none"
-            onClick={handleGoogleSync}
+            onClick={() => setShowGoogleSyncModal(true)}
             id="google-email-caret-card"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl" />
@@ -874,6 +954,274 @@ export default function ProfileView() {
         </div>
 
       </div>
+
+      {/* Google Account Connection and Fillup Form Modal */}
+      <AnimatePresence>
+        {showGoogleSyncModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            {/* Modal backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowGoogleSyncModal(false)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-md"
+            />
+
+            {/* Modal panel and form */}
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 30 }}
+              transition={{ type: 'spring', damping: 22 }}
+              className="relative w-full max-w-lg bg-[#090B15] border-2 border-cyan-500/30 rounded-3xl shadow-[0_20px_50px_rgba(0,240,255,0.25)] p-6 md:p-8 shrink-0 font-sans z-10 max-h-[92vh] overflow-y-auto custom-scrollbar my-auto"
+              id="google-sync-coordination-modal"
+            >
+              {/* Top cyber scanline */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 to-blue-500" />
+
+              {/* Header section with icons */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-950/50 border border-cyan-800/40 flex items-center justify-center text-cyan-400">
+                    <Globe className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-display font-medium text-white tracking-tight flex items-center gap-1.5 leading-none">
+                      Connect Google Account Matrix
+                    </h2>
+                    <span className="text-[9px] font-mono text-[#6F7694] uppercase tracking-wider block mt-1">Setup Cloud Database Alignment</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleSyncModal(false)}
+                  className="w-8 h-8 rounded-lg bg-[#05060A] border border-[#1C203E]/80 flex items-center justify-center text-[#6F7694] hover:text-white hover:border-cyan-500/50 hover:bg-cyan-950/20 transition cursor-pointer"
+                  title="Close Integration Window"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="w-full h-px bg-gradient-to-r from-cyan-500/20 to-transparent my-5" />
+
+              <form onSubmit={handleGoogleSyncSubmit} className="space-y-5">
+                {/* Visual info description */}
+                <p className="text-xs text-[#8C93B2] leading-relaxed font-sans">
+                  By configuring this coordination form, your workspace establishes continuous secure authorization with Google Cloud database. All tracked habits, local timers, levels, and unlocks survive browser clearing.
+                </p>
+
+                {/* Status alert message container */}
+                {googleSyncStatusMsg && (
+                  <div 
+                    className={`p-3 rounded-xl border font-mono text-xs flex items-start gap-2.5 leading-relaxed ${
+                      googleSyncStatusMsg.startsWith("ERROR") || googleSyncStatusMsg.includes("FAULT")
+                        ? "bg-red-950/40 border-red-500/30 text-red-300" 
+                        : "bg-cyan-950/40 border-cyan-800/45 text-cyan-300 animate-pulse"
+                    }`}
+                  >
+                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400" />
+                    <div>{googleSyncStatusMsg}</div>
+                  </div>
+                )}
+
+                {/* Input fields */}
+                <div className="space-y-5">
+                  
+                  {/* PART 1: Google Account coordinates */}
+                  <div className="space-y-3.5 bg-[#05060A]/50 p-4 border border-[#161B33] rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-1.5 h-3.5 bg-cyan-500 rounded-sm" />
+                      <span className="text-[10px] font-mono tracking-widest text-[#8C93B2] uppercase font-bold">
+                        PART 1: Google Account Identification
+                      </span>
+                    </div>
+
+                    {/* Google Account Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-mono tracking-widest text-[#6F7694] uppercase block ml-1">
+                        Google Account Name
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#4E5472]" />
+                        <input 
+                          type="text"
+                          required
+                          value={googleNameInput}
+                          onChange={(e) => setGoogleNameInput(e.target.value)}
+                          placeholder="e.g. John Doe"
+                          className="w-full bg-[#05060A]/95 border border-[#1E233E]/80 focus:border-cyan-500/50 rounded-xl py-2.5 pl-11 pr-4 text-xs font-mono text-[#ECEFF4] placeholder-[#4E5472] outline-none transition duration-200"
+                          id="google-sync-name-field"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Google Gmail address */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-mono tracking-widest text-[#6F7694] uppercase block ml-1">
+                        Google Account Email
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#4E5472]" />
+                        <input 
+                          type="email"
+                          required
+                          value={googleEmailInput}
+                          onChange={(e) => setGoogleEmailInput(e.target.value)}
+                          placeholder="e.g. yourname@gmail.com"
+                          className="w-full bg-[#05060A]/95 border border-[#1E233E]/80 focus:border-cyan-500/50 rounded-xl py-2.5 pl-11 pr-4 text-xs font-mono text-[#ECEFF4] placeholder-[#4E5472] outline-none transition duration-200"
+                          id="google-sync-email-field"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Account authorization credentials */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-mono tracking-widest text-[#6F7694] uppercase block ml-1 flex items-center justify-between">
+                        <span>Sync Credential Key</span>
+                        <span className="text-[8px] text-cyan-500/85 font-mono">Security connection key</span>
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#4E5472]" />
+                        <input 
+                          type="password"
+                          required
+                          value={googlePasswordInput}
+                          onChange={(e) => setGooglePasswordInput(e.target.value)}
+                          placeholder="Insert authorization access key..."
+                          className="w-full bg-[#05060A]/95 border border-[#1E233E]/80 focus:border-cyan-500/50 rounded-xl py-2.5 pl-11 pr-4 text-xs font-mono text-[#ECEFF4] placeholder-[#4E5472] outline-none transition duration-200"
+                          id="google-sync-password-field"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PART 2: Security App Lock Password */}
+                  <div className="space-y-3.5 bg-[#05060A]/50 p-4 border border-[#161B33] rounded-2xl">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-1.5 h-3.5 bg-violet-500 rounded-sm" />
+                      <span className="text-[10px] font-mono tracking-widest text-[#8C93B2] uppercase font-bold">
+                        PART 2: Create App Lock Security Password
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-[#6F7694] leading-relaxed mb-2 font-sans">
+                      Establish an authorization security lock password. When password protection is set, returning users must input this password before launching the workspace. Leave empty to disable screen lock.
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-mono tracking-widest text-[#6F7694] uppercase block ml-1 flex items-center justify-between">
+                        <span>Set Workspace Lock Password</span>
+                        <span className="text-[8px] text-violet-400 font-mono">Cyber barrier key</span>
+                      </label>
+                      <div className="relative">
+                        <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#4E5472]" />
+                        <input 
+                          type="password"
+                          value={googleLockPassword}
+                          onChange={(e) => setGoogleLockPassword(e.target.value)}
+                          placeholder="Enter shield lock password (Optional)..."
+                          className="w-full bg-[#05060A]/95 border border-[#1E233E]/80 focus:border-[#7C3AED]/50 rounded-xl py-2.5 pl-11 pr-4 text-xs font-mono text-[#ECEFF4] placeholder-[#4E5472] outline-none transition duration-200"
+                          id="google-sync-lock-password-field"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Synchronization Cadence selectors */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono tracking-widest text-[#6F7694] uppercase block ml-1">
+                      Uplink Sync Cadence
+                    </label>
+                    <div className="grid grid-cols-3 gap-2 text-xs font-mono col-span-1">
+                      {[
+                        { id: 'realtime', label: 'REALTIME', desc: 'Sync active' },
+                        { id: 'hourly', label: 'HOURLY', desc: 'Every 60 min' },
+                        { id: 'daily', label: 'DAILY', desc: 'Every 24 hours' }
+                      ].map((cad) => (
+                        <button
+                          key={cad.id}
+                          type="button"
+                          onClick={() => setGoogleBackupCadence(cad.id)}
+                          className={`p-2 rounded-xl border flex flex-col items-center justify-center transition cursor-pointer select-none ${
+                            googleBackupCadence === cad.id
+                              ? "bg-cyan-950/40 border-cyan-500/70 text-cyan-300"
+                              : "bg-[#05060A]/80 border-[#1C203D]/60 text-[#6F7694] hover:border-[#1E233E] hover:border-cyan-800/40"
+                          }`}
+                        >
+                          <span className="font-bold text-[10px]">{cad.label}</span>
+                          <span className="text-[8px] opacity-70 mt-0.5">{cad.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sync Datatype Selector checkboxes */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono tracking-widest text-[#6F7694] uppercase block ml-1">
+                      ALIGNMENT CATEGORIES
+                    </label>
+                    <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                      {[
+                        { key: 'habits', label: 'Habits', desc: 'Daily logs' },
+                        { key: 'focus', label: 'Timer logs', desc: 'Minutes' },
+                        { key: 'badges', label: 'Badges', desc: 'Achieve' }
+                      ].map((item) => (
+                        <div 
+                          key={item.key}
+                          onClick={() => setGoogleSyncOptions({
+                            ...googleSyncOptions,
+                            [item.key]: !googleSyncOptions[item.key as keyof typeof googleSyncOptions]
+                          })}
+                          className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center select-none cursor-pointer transition ${
+                            googleSyncOptions[item.key as keyof typeof googleSyncOptions]
+                              ? "bg-violet-950/20 border-violet-500/40 text-violet-300"
+                              : "bg-[#05060A]/50 border-[#1C203D]/60 text-[#4E5472]"
+                          }`}
+                        >
+                          <span className="font-bold text-[10px]">{item.label}</span>
+                          <span className="text-[8px] opacity-70 mt-0.5">{item.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Form Buttons */}
+                <div className="flex gap-3 pt-4 border-t border-[#1C213D] justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleSyncModal(false)}
+                    className="px-4 py-2 rounded-xl border border-[#222E5C] text-xs font-mono font-bold text-[#8A91B4] hover:text-white hover:border-[#354890] transition cursor-pointer"
+                  >
+                    ABORT
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={syncing}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-500 hover:opacity-95 text-black text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer"
+                    id="confirm-establish-google-sync-btn"
+                  >
+                    {syncing ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        SYNCING ENTROPY...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        ESTABLISH INTEGRATION
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
