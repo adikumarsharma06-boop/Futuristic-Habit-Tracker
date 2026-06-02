@@ -8,6 +8,7 @@ import { Habit, UserProfile, FocusSession, Quote, HabitCategory, HabitNote, Achi
 import { dbService, auth, isOfflineMode, signOutFromApp, handleFirestoreError, signInWithGoogle, registerWithEmail, signInWithEmail, resetPassword } from '../lib/firebase';
 import { evaluateGamification } from '../lib/badges';
 import { onAuthStateChanged } from 'firebase/auth';
+import { syncToSupabase, downloadFromSupabase } from '../lib/supabase';
 
 interface AppContextProps {
   userProfile: UserProfile | null;
@@ -81,9 +82,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setFocusSessions([]);
         return;
       }
-      const profile = await dbService.getUserProfile(uid);
-      const userHabits = await dbService.getHabits(uid);
-      const userFocus = await dbService.getFocusSessions(uid);
+      let profile = await dbService.getUserProfile(uid);
+      let userHabits = await dbService.getHabits(uid);
+      let userFocus = await dbService.getFocusSessions(uid);
+
+      // Attempt Supabase dynamic restoration on load
+      try {
+        const checkEmail = profile?.email || localStorage.getItem('google_sync_email') || '';
+        const restored = await downloadFromSupabase(uid, checkEmail);
+        if (restored) {
+          console.log('[Supabase loaded] Integrating restored cloud telemetry...', restored);
+          if (restored.profile) {
+            profile = restored.profile;
+            // Mirror to primary persistence cache
+            await dbService.saveUserProfile(restored.profile);
+          }
+          if (restored.habits && restored.habits.length > 0) {
+            userHabits = restored.habits;
+            // Sync habits list to local persistence store
+            localStorage.setItem('habits', JSON.stringify(restored.habits));
+          }
+          if (restored.focusSessions && restored.focusSessions.length > 0) {
+            userFocus = restored.focusSessions;
+            localStorage.setItem('futuristic_focus_sessions', JSON.stringify(restored.focusSessions));
+          }
+        }
+      } catch (sbErr) {
+        console.warn('[Supabase load bypass] Skipping cloud restore:', sbErr);
+      }
 
       if (profile) {
         setUserProfile(profile);
@@ -176,6 +202,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userProfile?.uid, loadStateData]);
 
+  // Auto-sync state modifications to Supabase in real-time with debouncing to avoid quota strain
+  useEffect(() => {
+    if (!userProfile) return;
+    const uid = userProfile.uid;
+
+    const timer = setTimeout(async () => {
+      try {
+        await syncToSupabase(uid, userProfile, habits, focusSessions);
+      } catch (err) {
+        console.warn('[Supabase Sync] Auto-save sequence bypassed:', err);
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [userProfile, habits, focusSessions]);
+
   // Load first quote on boot
   useEffect(() => {
     refreshQuote();
@@ -187,6 +229,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await signInWithGoogle();
       if (profile) {
+        if (!localStorage.getItem('google_sync_email')) {
+          localStorage.setItem('google_sync_email', profile.email || 'sandbox@example.com');
+          localStorage.setItem('google_sync_name', profile.displayName || 'Google User');
+          localStorage.setItem('google_sync_cadence', 'realtime');
+          localStorage.setItem('google_sync_options', JSON.stringify({ habits: true, focus: true, badges: true }));
+          window.dispatchEvent(new Event('google_sync_credentials_updated'));
+        }
         await loadStateData(profile.uid);
       }
     } catch (e) {
@@ -201,6 +250,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await registerWithEmail(email, password, displayName);
       if (profile) {
+        if (!localStorage.getItem('google_sync_email')) {
+          localStorage.setItem('google_sync_email', email.trim().toLowerCase());
+          localStorage.setItem('google_sync_name', displayName.trim());
+          localStorage.setItem('google_sync_cadence', 'realtime');
+          localStorage.setItem('google_sync_options', JSON.stringify({ habits: true, focus: true, badges: true }));
+          window.dispatchEvent(new Event('google_sync_credentials_updated'));
+        }
         await loadStateData(profile.uid);
       }
     } catch (e) {
@@ -216,6 +272,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await signInWithEmail(email, password);
       if (profile) {
+        if (!localStorage.getItem('google_sync_email')) {
+          localStorage.setItem('google_sync_email', email.trim().toLowerCase());
+          localStorage.setItem('google_sync_name', profile.displayName || 'Synapse User');
+          localStorage.setItem('google_sync_cadence', 'realtime');
+          localStorage.setItem('google_sync_options', JSON.stringify({ habits: true, focus: true, badges: true }));
+          window.dispatchEvent(new Event('google_sync_credentials_updated'));
+        }
         await loadStateData(profile.uid);
       }
     } catch (e) {

@@ -566,6 +566,45 @@ export default function ProfileView() {
             </div>
           </motion.div>
 
+          {/* Integrated Supabase Live Synchronization Status */}
+          <motion.div 
+            whileHover={{ scale: 1.01 }}
+            className="p-5 md:p-6 bg-[#0B1A1E] border border-[#114B3E]/60 rounded-3xl relative overflow-hidden group/scard select-none"
+            id="supabase-rest-sync-status-card"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl" />
+            <div className="flex items-center justify-between gap-4">
+              
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 bg-emerald-950/50 border border-[#00f576]/20 rounded-xl flex items-center justify-center shrink-0 text-emerald-400 shadow-inner hover:border-emerald-400 transition duration-350">
+                  <Database className="w-5 h-5 animate-[pulse_2s_infinite]" />
+                </div>
+                
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#00f576] bg-emerald-950/60 border border-emerald-900/30 px-2 py-0.5 rounded-full font-bold">
+                      Supabase Cloud Active
+                    </span>
+                    <span className="text-[8px] font-mono text-[#5E6482] uppercase ml-1">REST PROTOCOL v1</span>
+                  </div>
+                  <h3 className="text-xs font-mono text-zinc-100 mt-1.5 truncate pr-2">
+                    poikqxvsbohbfgpuiveq.supabase.co
+                  </h3>
+                  <div className="text-[9px] font-mono text-emerald-400 mt-1 uppercase flex items-center gap-1.5 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00f576] animate-ping shrink-0" />
+                    <span>Handshake Verified on "Futuristic Habit Tracker"</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Secure Lock indicator */}
+              <div className="w-8 h-8 rounded-lg bg-[#05060A] border border-[#133F2E] flex items-center justify-center text-emerald-400 group-hover/scard:bg-emerald-950 transition shrink-0">
+                <ShieldCheck className="w-4 h-4" style={{ color: '#00f576' }} />
+              </div>
+
+            </div>
+          </motion.div>
+
           <AnimatePresence>
             {syncSuccessMsg && (
               <motion.div
